@@ -6,6 +6,8 @@ export default defineConfig(({ command, mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
   
+  console.log('🔧 Vite Config:', { command, mode, apiUrl: env.VITE_API_URL });
+  
   return {
     plugins: [react()],
     
@@ -20,6 +22,7 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: mode === 'development',
       minify: mode === 'production' ? 'esbuild' : false,
       target: 'es2015',
+      assetsDir: 'assets',
       rollupOptions: {
         output: {
           manualChunks: {
@@ -27,12 +30,21 @@ export default defineConfig(({ command, mode }) => {
             ui: ['framer-motion', 'lucide-react'],
             charts: ['chart.js', 'react-chartjs-2'],
             utils: ['axios']
-          }
+          },
+          // Ensure consistent file names
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]'
         }
       },
       // Increase chunk size warning limit
-      chunkSizeWarningLimit: 1000
+      chunkSizeWarningLimit: 1000,
+      // Ensure all assets are properly handled
+      copyPublicDir: true
     },
+    
+    // Public directory
+    publicDir: 'public',
     
     // Development server configuration
     server: {

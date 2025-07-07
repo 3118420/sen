@@ -12,6 +12,7 @@ import SmartWellnessSystem from './components/SmartWellnessSystem';
 import ConversationHistory from './components/ConversationHistory';
 import { conversationManager } from './services/conversationManager';
 import { AIPersonality, VoiceSettings as VoiceSettingsType, Message, Conversation, UserPreferences } from './types';
+import DeploymentStatus from './components/DeploymentStatus';
 import './styles/responsive.css';
 
 const AI_PERSONALITIES: AIPersonality[] = [
@@ -413,6 +414,9 @@ function App() {
           )}
         </AnimatePresence>
       </ResponsiveLayout>
+      
+      {/* Deployment Status (only in debug mode) */}
+      <DeploymentStatus />
     </div>
   );
 }

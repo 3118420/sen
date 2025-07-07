@@ -1,1 +1,5 @@
+# Netlify-style redirects for SPA routing (backup)
 /*    /index.html   200
+
+# API proxy rules (if needed)
+/api/*  https://1treu6p055.execute-api.us-east-1.amazonaws.com/prod/api/:splat  200

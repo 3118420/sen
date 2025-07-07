@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:vercel": "vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:production": "vite build --mode production",
     "build:staging": "vite build --mode staging",
     "type-check": "tsc --noEmit",
     "analyze": "vite build --mode analyze",
-    "test:connectivity": "node scripts/test-connectivity.js"
+    "test:connectivity": "node scripts/test-connectivity.js",
+    "debug:build": "npm run build && npm run preview",
+    "debug:vercel": "vercel dev",
+    "clean": "rm -rf dist node_modules/.vite"
   },
   "dependencies": {
     "axios": "^1.6.0",
