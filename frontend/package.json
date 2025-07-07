@@ -8,7 +8,11 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:production": "vite build --mode production"
+    "build:production": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
+    "type-check": "tsc --noEmit",
+    "analyze": "vite build --mode analyze",
+    "test:connectivity": "node scripts/test-connectivity.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
