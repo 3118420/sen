@@ -1,0 +1,98 @@
+service: voice-insight-api
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  stage: dev
+  memorySize: 3008
+  timeout: 900
+  environment:
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+    CLOUDWATCH_NAMESPACE: VoiceInsight
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cloudwatch:PutMetricData
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "*"
+
+package:
+  patterns:
+    - '!**/__pycache__/**'
+    - '!**/*.pyc'
+    - '!**/*.pyo'
+    - '!**/*.pyd'
+    - '!**/tests/**'
+    - '!**/test_*/**'
+    - '!**/*_test.py'
+    - '!**/docs/**'
+    - '!**/examples/**'
+    - '!**/*.md'
+    - '!**/*.rst'
+    - '!**/*.txt'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!.idea/**'
+    - '!lambda_package/sympy/**'
+    - '!python-layer/python/openai/types/__pycache__/**'
+    - '!node_modules/**'
+    - '!venv/**'
+    - '!.venv/**'
+    - '!env/**'
+    - '!.env'
+
+functions:
+  api:
+    handler: lambda_handler.lambda_handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-python-requirements
+
+custom:
+  dotenv:
+    path: .env
+    include:
+      - OPENAI_API_KEY
+  pythonRequirements:
+    dockerizePip: false  # Disable Docker - use local Python
+    slim: true
+    strip: false
+    noDeps: false
+    zip: true
+    removeVendorHelper: true
+    useStaticCache: true
+    useDownloadCache: true

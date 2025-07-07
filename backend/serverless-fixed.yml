@@ -1,0 +1,107 @@
+service: voice-insight-api
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 3008
+  timeout: 900
+  
+  environment:
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    ENVIRONMENT: ${self:provider.stage}
+    LOG_LEVEL: INFO
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cloudwatch:PutMetricData
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "*"
+
+package:
+  patterns:
+    - '!**/__pycache__/**'
+    - '!**/*.pyc'
+    - '!**/*.pyo'
+    - '!**/*.pyd'
+    - '!**/tests/**'
+    - '!**/test_*/**'
+    - '!**/*_test.py'
+    - '!**/docs/**'
+    - '!**/examples/**'
+    - '!**/*.md'
+    - '!**/*.rst'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!.idea/**'
+    - '!node_modules/**'
+    - '!venv/**'
+    - '!.venv/**'
+    - '!env/**'
+    - '!uploads/**'
+    - '!*.log'
+
+functions:
+  api:
+    handler: handler.lambda_handler
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            allowOrigins: 
+              - '*'
+            allowHeaders:
+              - Content-Type
+              - Authorization
+              - X-Amz-Date
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+      - httpApi:
+          path: /
+          method: ANY
+          cors:
+            allowOrigins: 
+              - '*'
+            allowHeaders:
+              - Content-Type
+              - Authorization
+            allowMethods:
+              - GET
+              - POST
+              - OPTIONS
+
+plugins:
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    slim: true
+    strip: false
+    noDeps: false
+    zip: true
+    removeVendorHelper: true
+    useStaticCache: false
+    useDownloadCache: false
+    requirements: requirements-serverless.txt
+    pipCmdExtraArgs:
+      - --no-cache-dir
+      - --disable-pip-version-check
+  
+  dotenv:
+    path: .env
+    include:
+      - OPENAI_API_KEY

@@ -1,0 +1,29 @@
+# Serverless-optimized requirements
+fastapi==0.104.1
+mangum==0.17.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# Audio processing (lightweight versions)
+librosa==0.10.1
+soundfile==0.12.1
+
+# Speech-to-Text (use smaller model)
+openai-whisper==20231117
+
+# Sentiment Analysis (optimized)
+transformers==4.35.2
+textblob==0.17.1
+vaderSentiment==3.3.2
+
+# PyTorch CPU-only (smaller size)
+torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.16.0+cpu --index-url https://download.pytorch.org/whl/cpu
+torchaudio==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
+
+# Essential dependencies
+numpy==1.24.3
+requests==2.31.0
+python-dotenv==1.0.0
+regex==2023.10.3
+mangum>=0.17.0

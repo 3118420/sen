@@ -1,0 +1,17 @@
+{
+  "name": "voice-insight-api",
+  "version": "1.0.0",
+  "description": "Voice Insight API for AWS Lambda",
+  "main": "handler.py",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f api"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-python-requirements": "^6.0.0",
+    "serverless-dotenv-plugin": "^6.0.0"
+  }
+}
