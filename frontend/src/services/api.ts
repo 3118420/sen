@@ -44,7 +44,7 @@ export const processAudio = async (
     }
     queryParams.append('auto_detect', autoDetect.toString());
 
-    const url = `/api/process-audio${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `/process-audio${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     
     // Upload file with progress tracking
     const result = await apiClient.uploadFile(url, audioFile, {}, onProgress);
