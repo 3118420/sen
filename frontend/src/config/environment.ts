@@ -17,7 +17,7 @@ const validateEnvironment = (): EnvironmentConfig => {
   }
 
   const config: EnvironmentConfig = {
-    apiUrl: apiUrl || 'https://1treu6p055.execute-api.us-east-1.amazonaws.com/prod',
+    apiUrl: apiUrl || '/api',
     environment: (import.meta.env.VITE_ENVIRONMENT as any) || 'production',
     debugMode: import.meta.env.VITE_DEBUG_MODE === 'true' || import.meta.env.DEV,
     logLevel: (import.meta.env.VITE_LOG_LEVEL as any) || 'error',

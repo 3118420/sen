@@ -52,20 +52,19 @@ class APIClient {
 
     return axios.create({
       baseURL,
-      timeout: 30000, // 30 seconds for Lambda cold starts
-      headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         // Add headers for CORS and API Gateway
         'X-Requested-With': 'XMLHttpRequest',
-        'Cache-Control': 'no-cache'
+        // Remove X-Requested-With to avoid preflight requests
       },
       // Important for CORS
       withCredentials: false,
       // Handle different response types
       responseType: 'json',
       // Validate status codes
-      validateStatus: (status) => status < 500
+      validateStatus: (status) => status < 500,
+      // Add retry configuration
+      maxRedirects: 5
     });
   }
 
@@ -233,7 +232,8 @@ class APIClient {
 
     const config: AxiosRequestConfig = {
       headers: {
-        // Don't set Content-Type - let browser set it with boundary
+        // Let browser set Content-Type with boundary for FormData
+        'Accept': 'application/json',
       },
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
@@ -241,8 +241,11 @@ class APIClient {
           onProgress(Math.round(progress));
         }
       },
-      // Longer timeout for file uploads
-      timeout: 60000
+      // Extended timeout for file uploads
+      timeout: 120000,
+      // Ensure proper handling of large files
+      maxContentLength: 50 * 1024 * 1024, // 50MB
+      maxBodyLength: 50 * 1024 * 1024 // 50MB
     };
 
     const response = await this.client.post(url, formData, config);
