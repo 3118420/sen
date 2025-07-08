@@ -54,14 +54,15 @@ const FALLBACK_RESPONSES = {
   }
 };
 
-export default async function handler(req: any, res: any) {
+// Changed from 'export default function handler' to 'export default async function'
+export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const context: ConversationContext = req.body;
+    const context = req.body;
     const { transcript, sentiment, emotions, conversationHistory, personality } = context;
 
     // Validate required fields
@@ -69,21 +70,21 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Missing required fields: transcript and personality' });
     }
 
-    let response: AIResponse;
+    let response;
 
     // Try OpenAI first if API key is available
     if (process.env.OPENAI_API_KEY) {
       try {
-        const systemPrompt = PERSONALITY_PROMPTS[personality as keyof typeof PERSONALITY_PROMPTS] || PERSONALITY_PROMPTS.supportive;
+        const systemPrompt = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.supportive;
         
         const emotionContext = emotions ? `
         Detected emotions: Primary emotion is "${emotions.primary_emotion}" (${emotions.category}, ${emotions.intensity} intensity).
-        Top emotions: ${emotions.top_emotions?.map((e: any) => `${e.emotion} (${(e.score * 100).toFixed(1)}%)`).join(', ') || 'None'}
+        Top emotions: ${emotions.top_emotions?.map((e) => `${e.emotion} (${(e.score * 100).toFixed(1)}%)`).join(', ') || 'None'}
         ` : '';
 
         const messages = [
           {
-            role: 'system' as const,
+            role: 'system',
             content: `${systemPrompt}
 
             You are responding to someone who just spoke to you. Here's the context:
@@ -95,7 +96,7 @@ export default async function handler(req: any, res: any) {
           },
           ...conversationHistory.slice(-10), // Keep last 10 messages for context
           {
-            role: 'user' as const,
+            role: 'user',
             content: transcript
           }
         ];
@@ -136,11 +137,11 @@ export default async function handler(req: any, res: any) {
   }
 }
 
-function getFallbackResponse(context: ConversationContext): AIResponse {
+function getFallbackResponse(context) {
   const { sentiment, personality } = context;
   
-  const personalityResponses = FALLBACK_RESPONSES[personality as keyof typeof FALLBACK_RESPONSES] || FALLBACK_RESPONSES.supportive;
-  const sentimentKey = sentiment as keyof typeof personalityResponses;
+  const personalityResponses = FALLBACK_RESPONSES[personality] || FALLBACK_RESPONSES.supportive;
+  const sentimentKey = sentiment;
   const content = personalityResponses[sentimentKey] || personalityResponses.neutral;
   
   return { content };
