@@ -1,273 +1,94 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { env, debugMode, isProduction } from '../config/environment';
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+import os
+import tempfile
+import logging
+from typing import Optional
 
-// Enhanced retry configuration for Lambda cold starts
-interface RetryConfig {
-  retries: number;
-  retryDelay: number;
-  retryCondition: (error: any) => boolean;
-  onRetry?: (retryCount: number, error: any) => void;
-}
+from services.speech_to_text import transcribe_audio
+from services.enhanced_emotion_analysis import analyze_emotion_enhanced
+from services.sentiment_analysis import analyze_sentiment
+from models.schemas import AudioProcessingResponse, HealthResponse
 
-class APIClient {
-  private client: AxiosInstance;
-  private retryConfig: RetryConfig;
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-  constructor() {
-    this.retryConfig = {
-      retries: 3,
-      retryDelay: 1000,
-      retryCondition: (error) => {
-        // Retry on network errors, timeouts, and 5xx errors
-        return (
-          !error.response ||
-          error.code === 'ECONNABORTED' ||
-          error.code === 'NETWORK_ERROR' ||
-          (error.response?.status >= 500 && error.response?.status < 600) ||
-          error.response?.status === 429 // Rate limiting
-        );
-      },
-      onRetry: (retryCount, error) => {
-        if (debugMode) {
-          console.warn(`🔄 API Retry ${retryCount}:`, {
-            url: error.config?.url,
-            method: error.config?.method,
-            status: error.response?.status,
-            message: error.message
-          });
-        }
-      }
-    };
+app = FastAPI(
+    title="Voice Emotion Analysis API",
+    description="API for processing audio files and analyzing emotions",
+    version="1.0.0"
+)
 
-    this.client = this.createAxiosInstance();
-    this.setupInterceptors();
-  }
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-  private createAxiosInstance(): AxiosInstance {
-    const baseURL = env.apiUrl;
-    
-    if (debugMode) {
-      console.log('🌐 Creating API client with base URL:', baseURL);
-    }
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint"""
+    return HealthResponse(status="healthy", message="API is running")
 
-    return axios.create({
-      baseURL,
-      timeout: 30000, // 30 seconds for Lambda cold starts
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        // Add headers for CORS and API Gateway
-        'X-Requested-With': 'XMLHttpRequest',
-        'Cache-Control': 'no-cache'
-      },
-      // Important for CORS
-      withCredentials: false,
-      // Handle different response types
-      responseType: 'json',
-      // Validate status codes
-      validateStatus: (status) => status < 500
-    });
-  }
-
-  private setupInterceptors(): void {
-    // Request interceptor
-    this.client.interceptors.request.use(
-      (config) => {
-        // Add timestamp for debugging
-        config.metadata = { startTime: Date.now() };
+@app.post("/process-audio", response_model=AudioProcessingResponse)
+async def process_audio(
+    audio_file: UploadFile = File(...),
+    language: Optional[str] = Form("en")
+):
+    """
+    Process audio file and return transcription with emotion analysis
+    """
+    try:
+        logger.info(f"Processing audio file: {audio_file.filename}")
         
-        // Log request in development
-        if (debugMode) {
-          console.log('📤 API Request:', {
-            method: config.method?.toUpperCase(),
-            url: config.url,
-            baseURL: config.baseURL,
-            headers: config.headers,
-            data: config.data instanceof FormData ? 'FormData' : config.data
-          });
-        }
-
-        // Ensure proper headers for different content types
-        if (config.data instanceof FormData) {
-          // Let browser set Content-Type for FormData (includes boundary)
-          delete config.headers['Content-Type'];
-        }
-
-        return config;
-      },
-      (error) => {
-        console.error('📤 Request Error:', error);
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor with retry logic
-    this.client.interceptors.response.use(
-      (response) => {
-        const duration = Date.now() - (response.config.metadata?.startTime || 0);
+        # Validate file type
+        if not audio_file.content_type or not audio_file.content_type.startswith('audio/'):
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an audio file.")
         
-        if (debugMode) {
-          console.log('📥 API Response:', {
-            method: response.config.method?.toUpperCase(),
-            url: response.config.url,
-            status: response.status,
-            duration: `${duration}ms`,
-            data: response.data
-          });
-        }
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            content = await audio_file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Transcribe audio
+            transcription = transcribe_audio(temp_file_path, language)
+            
+            if not transcription:
+                raise HTTPException(status_code=400, detail="Could not transcribe audio. Please try again.")
+            
+            # Analyze emotions
+            emotion_analysis = analyze_emotion_enhanced(transcription)
+            
+            # Analyze sentiment
+            sentiment_analysis = analyze_sentiment(transcription)
+            
+            response = AudioProcessingResponse(
+                transcription=transcription,
+                emotion_analysis=emotion_analysis,
+                sentiment_analysis=sentiment_analysis
+            )
+            
+            logger.info("Audio processing completed successfully")
+            return response
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing audio: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-        return response;
-      },
-      async (error) => {
-        const config = error.config;
-        const duration = Date.now() - (config?.metadata?.startTime || 0);
-
-        // Log error details
-        console.error('📥 API Error:', {
-          method: config?.method?.toUpperCase(),
-          url: config?.url,
-          status: error.response?.status,
-          duration: `${duration}ms`,
-          message: error.message,
-          response: error.response?.data
-        });
-
-        // Implement retry logic
-        if (config && this.shouldRetry(error, config)) {
-          return this.retryRequest(config, error);
-        }
-
-        return Promise.reject(this.enhanceError(error));
-      }
-    );
-  }
-
-  private shouldRetry(error: any, config: any): boolean {
-    const retryCount = config.__retryCount || 0;
-    return (
-      retryCount < this.retryConfig.retries &&
-      this.retryConfig.retryCondition(error)
-    );
-  }
-
-  private async retryRequest(config: any, error: any): Promise<AxiosResponse> {
-    config.__retryCount = (config.__retryCount || 0) + 1;
-    
-    // Call retry callback
-    this.retryConfig.onRetry?.(config.__retryCount, error);
-
-    // Calculate delay with exponential backoff
-    const delay = this.retryConfig.retryDelay * Math.pow(2, config.__retryCount - 1);
-    
-    // Wait before retrying
-    await new Promise(resolve => setTimeout(resolve, delay));
-
-    // Reset metadata for new request
-    config.metadata = { startTime: Date.now() };
-
-    return this.client.request(config);
-  }
-
-  private enhanceError(error: any): Error {
-    const enhancedError = new Error();
-    
-    if (error.response) {
-      // Server responded with error status
-      enhancedError.name = 'APIResponseError';
-      enhancedError.message = error.response.data?.detail || 
-                              error.response.data?.message || 
-                              `HTTP ${error.response.status}: ${error.response.statusText}`;
-      (enhancedError as any).status = error.response.status;
-      (enhancedError as any).data = error.response.data;
-    } else if (error.request) {
-      // Request was made but no response received
-      enhancedError.name = 'APINetworkError';
-      enhancedError.message = 'Network error - please check your connection and try again';
-    } else {
-      // Something else happened
-      enhancedError.name = 'APIError';
-      enhancedError.message = error.message || 'An unexpected error occurred';
-    }
-
-    (enhancedError as any).originalError = error;
-    return enhancedError;
-  }
-
-  // Public methods
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get(url, config);
-    return response.data;
-  }
-
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post(url, data, config);
-    return response.data;
-  }
-
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put(url, data, config);
-    return response.data;
-  }
-
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete(url, config);
-    return response.data;
-  }
-
-  // File upload method with progress tracking
-  async uploadFile<T = any>(
-    url: string, 
-    file: File, 
-    additionalData?: Record<string, any>,
-    onProgress?: (progress: number) => void
-  ): Promise<T> {
-    const formData = new FormData();
-    formData.append('audio_file', file);
-    
-    // Add additional form data
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, value]) => {
-        formData.append(key, String(value));
-      });
-    }
-
-    const config: AxiosRequestConfig = {
-      headers: {
-        // Don't set Content-Type - let browser set it with boundary
-      },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const progress = (progressEvent.loaded / progressEvent.total) * 100;
-          onProgress(Math.round(progress));
-        }
-      },
-      // Longer timeout for file uploads
-      timeout: 60000
-    };
-
-    const response = await this.client.post(url, formData, config);
-    return response.data;
-  }
-
-  // Health check method
-  async healthCheck(): Promise<boolean> {
-    try {
-      await this.get('/health');
-      return true;
-    } catch (error) {
-      console.warn('Health check failed:', error);
-      return false;
-    }
-  }
-
-  // Get client instance for advanced usage
-  getClient(): AxiosInstance {
-    return this.client;
-  }
-}
-
-// Create singleton instance
-export const apiClient = new APIClient();
-
-// Export for backward compatibility
-export default apiClient;
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
