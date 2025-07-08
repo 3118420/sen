@@ -44,6 +44,7 @@
   ],
   "env": {
     "VITE_API_URL": "https://1treu6p055.execute-api.us-east-1.amazonaws.com/prod",
+    "VITE_OPENAI_API_KEY": "",
     "VITE_ENVIRONMENT": "production",
     "VITE_DEBUG_MODE": "false",
     "VITE_LOG_LEVEL": "error",
