@@ -33,21 +33,18 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # React (Create React App)
-        "http://localhost:5173",  # Vite (React/Vue)
-        "http://localhost:8080",  # Vue CLI
-        "http://127.0.0.1:3000",  # Alternative localhost
-        "http://127.0.0.1:5173",  # Alternative localhost
-        "https://*.vercel.app",   # Vercel deployments
-        "https://*.netlify.app",  # Netlify deployments
-        "https://enhanced-ai-companion.vercel.app",  # Your Vercel domain
-        "https://enhanced-ai-companion-*.vercel.app",  # Preview deployments
-        "*"  # Allow all origins for now
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "https://senlast.vercel.app"  
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Include CloudWatch metrics router
 app.include_router(cloudwatch_router)
