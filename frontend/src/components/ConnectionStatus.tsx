@@ -52,8 +52,6 @@ class APIClient {
 
     return axios.create({
       baseURL,
-      headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         // Add headers for CORS and API Gateway
         'X-Requested-With': 'XMLHttpRequest',
@@ -276,3 +274,4 @@ export const apiClient = new APIClient();
 
 // Export for backward compatibility
 export default apiClient;
+}
