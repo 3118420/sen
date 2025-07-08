@@ -175,37 +175,6 @@ export const healthCheck = async () => {
 };
 
 /**
- * Get audio file URL for playback
- */
-export const getAudioFileUrl = (fileId: string): string => {
-  return `${apiClient.getClient().defaults.baseURL}/api/audio/${fileId}`;
-};
-
-/**
- * List available audio files
- */
-export const listAudioFiles = async () => {
-  try {
-    if (debugMode) {
-      console.log('📁 Fetching audio file list...');
-    }
-
-    return await apiClient.get('/api/audio');
-  } catch (error: any) {
-    console.error('❌ Failed to list audio files:', error);
-    throw new Error(error.message || 'Failed to list audio files');
-  }
-};
-
-/**
- * Delete audio file
- */
-export const deleteAudioFile = async (fileId: string) => {
-  try {
-    if (debugMode) {
-      console.log('🗑️ Deleting audio file:', fileId);
-    }
-/**
  * Send metrics to CloudWatch (if enabled)
  */
 export const sendMetrics = async (metrics: Record<string, any>) => {
@@ -223,13 +192,6 @@ export const sendMetrics = async (metrics: Record<string, any>) => {
     // Don't throw for metrics errors - just log them
     console.warn('⚠️ Failed to send metrics:', error);
     return null;
-  }
-};
-
-    return await apiClient.delete(`/api/audio/${fileId}`);
-  } catch (error: any) {
-    console.error('❌ Failed to delete audio file:', error);
-    throw new Error(error.message || 'Failed to delete audio file');
   }
 };
 
